@@ -1,3 +1,127 @@
-ghjhhv
+################################################################################
+#######                          carregar biblioteca                     #######
+################################################################################
+library(readr)
+library(readr)
+library(SmartEDA)
+library(DMwR2)
+library (rpart)
+library(dplyr)
+################################################################################
+#######                          carregar dados                     #######
+################################################################################
+Accident_Information <- read_csv("data//Accident_Information.csv")
+Vehicle_Information <- read_csv("data/Vehicle_Information.csv")
 
+ExpReport(Accident_Information, op_file = "eda_auto_report_Accident_Information.html", op_dir ="outputs//")
+ExpReport(Vehicle_Information, op_file = "eda_auto_report_Vehicle_Information.html", op_dir ="outputs//" )
+
+################################################################################
+#######                     Visualizar e nomear os dados                 #######
+################################################################################ 
+
+###apagar NA das duas tabelas###
+Vehicle_Information <- na.omit(Vehicle_Information)
+Accident_Information <- na.omit(Accident_Information)
+
+
+
+################################################################################
+#######                      2.Pré-Processamento dos dados               #######
+################################################################################
+
+##apagar colunas não importantes##
+Vehicle_Information <- subset(Vehicle_Information, select = -c("Driver_IMD_Decile", "Hit_Object_Off_Carriageway", "Propulsion_Code","Was_Vehicle_Left_Hand_Drive", "Vehicle_Location.Restricted_Lane", "Journey_Purpose_of_Driver", "Junction_Location"))
+Accident_Information <- subset(Accident_Information, select = -c("1st_Road_Number", "2nd_Road_Number", "Latitude", "Longitude", "Location_Easting_OSGR", "Location_Norting_OSGR", "LSOA_of_Accident_Location", "Pedestrian_Crossing-Physical_Facilities", "Police_Force", "InSctoland", "Time"))
+
+################################################################################
+#######            tratamento de NA em Vehicle_Information               #######
+################################################################################
+
+##ver quantos NA em junction_location e decidimos eliminar
+Vehicle_Information$Junction_Location[Vehicle_Information$Junction_Location == "Data missing or out of range" | is.na(Vehicle_Information$Junction_Location)] <- NA
+contagem_NA_junction_location <- sum(is.na(Vehicle_Information$Junction_Location))
+print (contagem_NA_junction_location)
+
+## mudar "data missing" para NA Driver_Home_Area_Type
+Vehicle_Information$Age_Band_of_Driver[Vehicle_Information$Age_Band_of_Driver == "Data missing or out of range" | is.na(Vehicle_Information$Age_Band_of_Driver)] <- NA
+
+## mudar "data missing" para NA Driver_Home_Area_Type
+Vehicle_Information$Driver_Home_Area_Type[Vehicle_Information$Driver_Home_Area_Type == "Data missing or out of range" | is.na(Vehicle_Information$Driver_Home_Area_Type)] <- NA
+
+## mudar "data missing" para NA em Was_Vehicle_Left_Hand_Drive
+Vehicle_Information$Was_Vehicle_Left_Hand_Drive[Vehicle_Information$Was_Vehicle_Left_Hand_Drive == "Data missing or out of range" | is.na(Vehicle_Information$Was_Vehicle_Left_Hand_Drive)] <- NA
+
+## mudar "not known" para NA Sex_of_Driver
+Vehicle_Information$Sex_of_Driver[Vehicle_Information$Sex_of_Driver == "Not known" | is.na(Vehicle_Information$Sex_of_Driver)] <- NA
+
+##ver o que significa coluna no accident - juction_detail and juction_control
+
+##procurar variávies para ver se há NA ou data missing em Hit_Object_in_Carriageway, make, Skidding_and_Overturning, Towing_and_Articulation, Vehicle_Leaving_Carriageway, Vehicle_Manoeuvre, Vehicle_Reference, Vehicle_Type
+
+################################################################################
+#######            tratamento de NA em Accident_Information              #######
+################################################################################
+
+## mudar "data missing" para NA em Junction_Control
+Accident_Information$Junction_Control[Accident_Information$Junction_Control == "Data missing or out of range" | is.na(Accident_Information$Junction_Control)] <- NA
+
+## mudar "data missing" para NA em Junction_Detail
+Accident_Information$Junction_Detail[Accident_Information$Junction_Detail == "Data missing or out of range" | is.na(Accident_Information$Junction_Detail)] <- NA
+
+## mudar "unknown" para NA em Junction_Control
+Accident_Information$Weather_Conditions[Accident_Information$Weather_Conditions == "Unknown" | is.na(Accident_Information$Weather_Conditions)] <- NA
+
+## mudar "unclassified" para NA em 1st_Road_Class
+Accident_Information$1st_Road_Class[Accident_Information$1st_Road_Class == "Unclassified" | is.na(Accident_Information$1st_Road_Class)] <- NA
+
+## mudar "unclassified" para NA em 2nd_Road_Class
+Accident_Information$2nd_Road_Class[Accident_Information$2nd_Road_Class == "Unclassified" | is.na(Accident_Information$2nd_Road_Class)] <- NA
+
+##procurar variávies para ver se há NA ou data missing em Accident_Severity, Carriageway_Hazards, Date_ Day_of_Week, Did_Police_Attend_Scene_of_Accident, Light_Conditions, Local_Authority_(District), Local_Authority_(Highway), Number_of_Casualties, Number_of_Vehicles, Pedestrian_Crossing-Human_Control, Road_Surface_Conditions, Road_Type, Special_Conditions_at_Site, Speed_limit, Urban_or_Rural_Area, Year   
+
+################################################################################
+#######                          juntar as duas tabelas                  #######
+################################################################################
+
+
+
+################################################################################
+#######                          Entendimento dos dados                  #######
+################################################################################
+
+library(dplyr)
+library(tidyr)
+
+################################################################################
+#######                          sumarizar as tabelas                    #######
+################################################################################
+
+tab <- Accident_Information %>% select_if(is.numeric) %>%
+  summarise(across(everything(), .fns = list(
+    mean = function(x) mean(x, na.rm = TRUE),
+    sd = function(x) sd(x, na.rm = TRUE),
+    min = function(x) min(x, na.rm = TRUE),
+    p25 = function(x) quantile(x, probs = 0.25, na.rm = TRUE),
+    median = function(x) median(x , na.rm = TRUE),
+    p75 = function(x) quantile(x, probs = 0.75, na.rm = TRUE),
+    max = function(x) max(x, na.rm = TRUE)),
+    .names = "{.col}&{.fn}")) %>%
+  pivot_longer(names_to = "stat", values_to = "val", cols = everything()) %>%
+  separate(stat, into = c("var", "stat"), sep = "&") %>%
+  pivot_wider(names_from = stat, values_from = val),
+
+tab <- Vehicle_Information %>% select_if(is.numeric) %>%
+  summarise(across(everything(), .fns = list(
+    mean = function(x) mean(x, na.rm = TRUE),
+    sd = function(x) sd(x, na.rm = TRUE),
+    min = function(x) min(x, na.rm = TRUE),
+    p25 = function(x) quantile(x, probs = 0.25, na.rm = TRUE),
+    median = function(x) median(x , na.rm = TRUE),
+    p75 = function(x) quantile(x, probs = 0.75, na.rm = TRUE),
+    max = function(x) max(x, na.rm = TRUE)),
+    .names = "{.col}&{.fn}")) %>%
+  pivot_longer(names_to = "stat", values_to = "val", cols = everything()) %>%
+  separate(stat, into = c("var", "stat"), sep = "&") %>%
+  pivot_wider(names_from = stat, values_from = val)
 
