@@ -7,8 +7,9 @@ library(SmartEDA)
 library(DMwR2)
 library (rpart)
 library(dplyr)
+
 ################################################################################
-#######                          carregar dados                     #######
+#######                           carregar dados                         #######
 ################################################################################
 Accident_Information <- read_csv("data//Accident_Information.csv")
 Vehicle_Information <- read_csv("data/Vehicle_Information.csv")
@@ -20,19 +21,22 @@ ExpReport(Vehicle_Information, op_file = "eda_auto_report_Vehicle_Information.ht
 #######                     Visualizar e nomear os dados                 #######
 ################################################################################ 
 
-###apagar NA das duas tabelas###
-Vehicle_Information <- na.omit(Vehicle_Information)
-Accident_Information <- na.omit(Accident_Information)
-
-
 
 ################################################################################
 #######                      2.Pré-Processamento dos dados               #######
 ################################################################################
+library(dplyr)
+
 
 ##apagar colunas não importantes##
-Vehicle_Information <- subset(Vehicle_Information, select = -c("Driver_IMD_Decile", "Hit_Object_Off_Carriageway", "Propulsion_Code","Was_Vehicle_Left_Hand_Drive", "Vehicle_Location.Restricted_Lane", "Journey_Purpose_of_Driver", "Junction_Location"))
-Accident_Information <- subset(Accident_Information, select = -c("1st_Road_Number", "2nd_Road_Number", "Latitude", "Longitude", "Location_Easting_OSGR", "Location_Norting_OSGR", "LSOA_of_Accident_Location", "Pedestrian_Crossing-Physical_Facilities", "Police_Force", "InSctoland", "Time"))
+Vehicle_Information <- Vehicle_Information %>%
+  select(-Driver_IMD_Decile, -Hit_Object_in_Carriageway, -Propulsion_Code, -Was_Vehicle_Left_Hand_Drive, -Vehicle_Location.Restricted_Lane, -Journey_Purpose_of_Driver, -Junction_Location)
+
+##deu erro tirar coluna "InScotland" por isso separamos os casos
+Accident_Information <- Accident_Information %>%
+  select(-`1st_Road_Number`, -`2nd_Road_Number`, -Latitude, -Longitude, -Location_Easting_OSGR, -LSOA_of_Accident_Location, -`Pedestrian_Crossing-Physical_Facilities`, -Police_Force, -Time)
+Accident_Information <- subset (Accident_Information, select = -InScotland)
+
 
 ################################################################################
 #######            tratamento de NA em Vehicle_Information               #######
@@ -55,9 +59,40 @@ Vehicle_Information$Was_Vehicle_Left_Hand_Drive[Vehicle_Information$Was_Vehicle_
 ## mudar "not known" para NA Sex_of_Driver
 Vehicle_Information$Sex_of_Driver[Vehicle_Information$Sex_of_Driver == "Not known" | is.na(Vehicle_Information$Sex_of_Driver)] <- NA
 
-##ver o que significa coluna no accident - juction_detail and juction_control
+### quais as variáveis na coluna Hit_Object_in_Carriageway para ver se há NA não detetáveis
+valores_Hit_Object_in_Carriageway <- unique(Vehicle_Information$Hit_Object_in_Carriageway)
+print (valores_Hit_Object_in_Carriageway)
+Vehicle_Information$Hit_Object_in_Carriageway[Vehicle_Information$Hit_Object_in_Carriageway == "Data missing or out of range" | is.na(Vehicle_Information$Hit_Object_in_Carriageway)] <- NA
 
-##procurar variávies para ver se há NA ou data missing em Hit_Object_in_Carriageway, make, Skidding_and_Overturning, Towing_and_Articulation, Vehicle_Leaving_Carriageway, Vehicle_Manoeuvre, Vehicle_Reference, Vehicle_Type
+### quais as variáveis na coluna make para ver se há NA não detetáveis
+valores_make <- unique(Vehicle_Information$make)
+print (valores_make)
+Vehicle_Information$make[Vehicle_Information$make == "Data missing or out of range" | is.na(Vehicle_Information$make)] <- NA
+
+### quais as variáveis na coluna Skidding_and_Overturning para ver se há NA não detetáveis
+valores_Skidding_and_Overturning <- unique(Vehicle_Information$Skidding_and_Overturning)
+print (valores_Skidding_and_Overturning)
+Vehicle_Information$Skidding_and_Overturning[Vehicle_Information$Skidding_and_Overturning == "Data missing or out of range" | is.na(Vehicle_Information$Skidding_and_Overturning)] <- NA
+
+### quais as variáveis na coluna Towing_and_Articulation para ver se há NA não detetáveis
+valores_Towing_and_Articulation <- unique(Vehicle_Information$Towing_and_Articulation)
+print (valores_Towing_and_Articulation)
+Vehicle_Information$Towing_and_Articulation[Vehicle_Information$Towing_and_Articulation == "Data missing or out of range" | is.na(Vehicle_Information$Towing_and_Articulation)] <- NA
+
+### quais as variáveis na coluna Vehicle_Manoeuvre para ver se há NA não detetáveis
+valores_Vehicle_Manoeuvre <- unique(Vehicle_Information$Vehicle_Manoeuvre)
+print (valores_Vehicle_Manoeuvre)
+Vehicle_Information$Vehicle_Manoeuvre[Vehicle_Information$Vehicle_Manoeuvre == "Data missing or out of range" | is.na(Vehicle_Information$Vehicle_Manoeuvre)] <- NA
+
+### quais as variáveis na coluna Vehicle_Reference para ver se há NA não detetáveis
+valores_Vehicle_Reference <- unique(Vehicle_Information$Vehicle_Reference)
+print (valores_Vehicle_Reference)
+
+### quais as variáveis na coluna Vehicle_Type para ver se há NA não detetáveis
+valores_Vehicle_Type <- unique(Vehicle_Information$Vehicle_Type)
+print (valores_Vehicle_Type)
+Vehicle_Information$Vehicle_Type[Vehicle_Information$Vehicle_Type == "Data missing or out of range" | is.na(Vehicle_Information$Vehicle_Type)] <- NA
+
 
 ################################################################################
 #######            tratamento de NA em Accident_Information              #######
@@ -69,22 +104,162 @@ Accident_Information$Junction_Control[Accident_Information$Junction_Control == "
 ## mudar "data missing" para NA em Junction_Detail
 Accident_Information$Junction_Detail[Accident_Information$Junction_Detail == "Data missing or out of range" | is.na(Accident_Information$Junction_Detail)] <- NA
 
-## mudar "unknown" para NA em Junction_Control
+## mudar "unknown" para NA em Weather_Conditions
 Accident_Information$Weather_Conditions[Accident_Information$Weather_Conditions == "Unknown" | is.na(Accident_Information$Weather_Conditions)] <- NA
 
 ## mudar "unclassified" para NA em 1st_Road_Class
-Accident_Information$1st_Road_Class[Accident_Information$1st_Road_Class == "Unclassified" | is.na(Accident_Information$1st_Road_Class)] <- NA
+Accident_Information$`1st_Road_Class`[Accident_Information$`1st_Road_Class` == "Unclassified" | is.na(Accident_Information$`1st_Road_Class`)] <- NA
 
 ## mudar "unclassified" para NA em 2nd_Road_Class
-Accident_Information$2nd_Road_Class[Accident_Information$2nd_Road_Class == "Unclassified" | is.na(Accident_Information$2nd_Road_Class)] <- NA
+Accident_Information$`2nd_Road_Class`[Accident_Information$`2nd_Road_Class`== "Unclassified" | is.na(Accident_Information$`2nd_Road_Class`)] <- NA
 
-##procurar variávies para ver se há NA ou data missing em Accident_Severity, Carriageway_Hazards, Date_ Day_of_Week, Did_Police_Attend_Scene_of_Accident, Light_Conditions, Local_Authority_(District), Local_Authority_(Highway), Number_of_Casualties, Number_of_Vehicles, Pedestrian_Crossing-Human_Control, Road_Surface_Conditions, Road_Type, Special_Conditions_at_Site, Speed_limit, Urban_or_Rural_Area, Year   
+### quais as variáveis na coluna Accident_Severity para ver se há NA não detetáveis
+valores_unicos <- unique(Accident_Information$Accident_Severity)
+print (valores_unicos)
+any(is.na(Accident_Information$Accident_Severity))
+
+### ver variáveis na coluna Carriageway_Hazards para ver se há NA não detetáveis, mudar data missing para NA
+variaveis_carriage_hazards <- unique(Accident_Information$Carriageway_Hazards)
+print(variaveis_carriage_hazards)
+Accident_Information$Carriageway_Hazards[Accident_Information$Carriageway_Hazards == "Data missing or out of range" | is.na(Accident_Information$Carriageway_Hazards)] <- NA
+
+## ver variaveis na coluna Date e NA
+variaveis_Date <- unique(Accident_Information$Date)
+print(variaveis_Date)
+any(is.na(Accident_Information$Date))
+
+## ver variaveis na coluna Day_of_Week e NA
+variaveis_Day_of_Week <- unique(Accident_Information$Day_of_Week)
+print(variaveis_Day_of_Week)
+
+## ver variaveis na coluna Did_Police_Officer_Attend_Scene_of_Acident e NA
+variaveis_Did_Police_Attend_Scene_of_Acident <- unique(Accident_Information$Did_Police_Officer_Attend_Scene_of_Accident)
+print(variaveis_Did_Police_Attend_Scene_of_Acident)
+
+## ver variaveis na coluna Light_Conditions e mudar data missing para NA
+variaveis_Light_Conditions <- unique(Accident_Information$Light_Conditions)
+print(variaveis_Light_Conditions)
+Accident_Information$Light_Conditions[Accident_Information$Light_Conditions == "Data missing or out of range" | is.na(Accident_Information$Light_Conditions)] <- NA
+
+## ver variaveis na coluna Local_Authority_(District) e NA, ver se há NA
+variaveis_Local_Authority_District <- unique(Accident_Information$`Local_Authority_(District)`)
+print(variaveis_Local_Authority_District)
+any(is.na(Accident_Information$`Local_Authority_(District)`))
+
+## ver variaveis na coluna Local_Authority_(Highway) e NA, ver se há NA
+variaveis_Local_Authority_Highway <- unique(Accident_Information$`Local_Authority_(Highway)`)
+print(variaveis_Local_Authority_Highway)
+any(is.na(Accident_Information$`Local_Authority_(Highway)`))
+
+## ver variaveis na coluna Number_of_Casualties e NA, ver se há NA
+variaveis_Number_of_Casualties <- unique(Accident_Information$Number_of_Casualties)
+print(variaveis_Number_of_Casualties)
+any(is.na(Accident_Information$Number_of_Casualties))
+
+## ver variaveis na coluna Number_of_Vehicles e NA, ver se há NA
+variaveis_Number_of_Vehicles <- unique(Accident_Information$Number_of_Vehicles)
+print(variaveis_Number_of_Vehicles)
+any(is.na(Accident_Information$Number_of_Vehicles))
+
+## ver variaveis na coluna Pedestrian_Crossing-Human_Control e NA
+variaveis_Pedestrian_Crossing_Human_Control <- unique(Accident_Information$`Pedestrian_Crossing-Human_Control`)
+print(variaveis_Pedestrian_Crossing_Human_Control)
+
+## ver variaveis na coluna Road_Surface_Conditions e NA, mudar data missing para NA
+variaveis_Road_Surface_Conditions <- unique(Accident_Information$Road_Surface_Conditions)
+print(variaveis_Road_Surface_Conditions)
+Accident_Information$Road_Surface_Conditions[Accident_Information$Road_Surface_Conditions == "Data missing or out of range" | is.na(Accident_Information$Road_Surface_Conditions)] <- NA
+
+## ver variaveis na coluna Road_Type e NA, mudar data missing para NA
+variaveis_Road_Type <- unique(Accident_Information$Road_Type)
+print(variaveis_Road_Type)
+Accident_Information$Road_Type[Accident_Information$Road_Type == "Data missing or out of range" | is.na(Accident_Information$Road_Type)] <- NA
+
+## ver variaveis na coluna Special_Conditions_at_Site e NA, mudar data missing para NA
+variaveis_Special_Conditions_at_Site <- unique(Accident_Information$Special_Conditions_at_Site)
+print(variaveis_Special_Conditions_at_Site)
+Accident_Information$Special_Conditions_at_Site[Accident_Information$Special_Conditions_at_Site == "Data missing or out of range" | is.na(Accident_Information$Special_Conditions_at_Site)] <- NA
+
+## ver variaveis na coluna Speed_Limit e NA
+variaveis_Speed_Limit <- unique(Accident_Information$Speed_limit)
+print(variaveis_Speed_Limit)
+
+## ver variaveis na coluna Urban_or_Rural_Area e NA, mudar data missing para NA
+variaveis_Urban_or_Rural_Area <- unique(Accident_Information$Urban_or_Rural_Area)
+print(variaveis_Urban_or_Rural_Area)
+Accident_Information$Urban_or_Rural_Area[Accident_Information$Urban_or_Rural_Area == "Data missing or out of range" | is.na(Accident_Information$Urban_or_Rural_Area)] <- NA
+
+## ver variaveis na coluna Year e NA
+variaveis_Year <- unique(Accident_Information$Year)
+print(variaveis_Year)
+
+
+################################################################################
+#######                 Ver quantos NA há nas colunas                    #######
+################################################################################
+
+
+# Calcular o número de NA em cada coluna, filtrar as colunas com mais de 200000 NA, na tabela Vehicle_Information
+num_na_por_coluna <- colSums(is.na(Vehicle_Information))
+colunas_na <- names(num_na_por_coluna[num_na_por_coluna > 200000])
+print(colunas_na)
+
+##decidimos apagar a coluna "Engine_Capacity_.CC." e "model"
+Accident_Information <- Accident_Information %>%
+  select(-Engine_Capacity_.CC., -model)
+
+# Calcular o número de NA em cada coluna, filtrar as colunas com mais de 200000 NA, na tabela Accident_Information
+num_coluna_accident_information <- colSums(is.na(Accident_Information))
+colunas_na_accident_information <- names(num_coluna_accident_information[num_coluna_accident_information > 200000])
+print(colunas_na_accident_information)
+
+##decidimos apagar a coluna "Junction_Control"
+Accident_Information <- subset(Accident_Information, select = -Junction_Control)
+
+
+################################################################################
+#######                        Imputação de Dados                        #######
+################################################################################
+
+install.packages("mice")
+library(mice)
+
+# Realizar a imputação usando o método de regressão
+dados_imputados <- mice(dados, method = 'rf')  # Método de imputação com Floresta Aleatória (Random Forest)
+
+# Obter os dados imputados completos
+dados_completos <- complete(dados_imputados)
+
+# Agora 'dados_completos' contém os valores ausentes previstos pelo modelo
+
+aproximação_NA_Vehicle_Information <- Vehicle_Information[, -which(names(dados) == "variavel_com_faltantes")]
 
 ################################################################################
 #######                          juntar as duas tabelas                  #######
 ################################################################################
 
 
+################################################################################
+###  Ver colunas importantes e dessas escolher apenas 10 que têm menos NA    ###
+################################################################################
+
+# Exemplo de um dataframe
+seu_dataframe <- data.frame(
+  coluna1 = c(1, 2, NA, 4),
+  coluna2 = c(NA, NA, NA, NA),
+  coluna3 = c(NA, 2, NA, 4),
+  coluna4 = c(1, 2, 3, 4),
+  coluna5 = c(NA, NA, NA, NA)
+)
+
+# Calcular a quantidade de NA em cada coluna
+quantidade_na_por_coluna <- colSums(is.na(seu_dataframe))
+
+# Obter os nomes das 10 colunas com menos NA
+nomes_colunas_menos_na <- names(sort(quantidade_na_por_coluna, na.last = TRUE))[1:10]
+
+# Selecionar apenas as 10 colunas com menos NA
+seu_dataframe_10_colunas <- seu_dataframe[nomes_colunas_menos_na]
 
 ################################################################################
 #######                          Entendimento dos dados                  #######
@@ -109,7 +284,7 @@ tab <- Accident_Information %>% select_if(is.numeric) %>%
     .names = "{.col}&{.fn}")) %>%
   pivot_longer(names_to = "stat", values_to = "val", cols = everything()) %>%
   separate(stat, into = c("var", "stat"), sep = "&") %>%
-  pivot_wider(names_from = stat, values_from = val),
+  pivot_wider(names_from = stat, values_from = val)
 
 tab <- Vehicle_Information %>% select_if(is.numeric) %>%
   summarise(across(everything(), .fns = list(
@@ -124,4 +299,6 @@ tab <- Vehicle_Information %>% select_if(is.numeric) %>%
   pivot_longer(names_to = "stat", values_to = "val", cols = everything()) %>%
   separate(stat, into = c("var", "stat"), sep = "&") %>%
   pivot_wider(names_from = stat, values_from = val)
+  
+
 
