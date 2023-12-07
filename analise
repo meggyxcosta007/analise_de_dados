@@ -192,10 +192,6 @@ num_na_por_coluna <- colSums(is.na(Vehicle_Information))
 colunas_na <- names(num_na_por_coluna[num_na_por_coluna > 200000])
 print(colunas_na)
 
-##decidimos apagar a coluna "Engine_Capacity_.CC." e "model"
-Accident_Information <- Accident_Information %>%
-  select(-Engine_Capacity_.CC., -model)
-
 
 # Calcular o número de NA em cada coluna, filtrar as colunas com mais de 200000 NA, na tabela Accident_Information
 num_coluna_accident_information <- colSums(is.na(Accident_Information))
