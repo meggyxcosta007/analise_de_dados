@@ -7,6 +7,7 @@ library(SmartEDA)
 library(DMwR2)
 library (rpart)
 library(dplyr)
+library(tidyr)
 
 ################################################################################
 #######                           carregar dados                         #######
@@ -45,6 +46,7 @@ Accident_Information <- subset (Accident_Information, select = -InScotland)
 
 ## mudar "data missing" para NA Age_Band_of_Driver
 Vehicle_Information$Age_Band_of_Driver[Vehicle_Information$Age_Band_of_Driver == "Data missing or out of range" | is.na(Vehicle_Information$Age_Band_of_Driver)] <- NA
+Vehicle_Information$Age_Band_of_Driver[Vehicle_Information$Age_Band_of_Driver == "Over" | is.na(Vehicle_Information$Age_Band_of_Driver)] <- NA
 
 ## mudar "data missing" para NA Driver_Home_Area_Type
 Vehicle_Information$Driver_Home_Area_Type[Vehicle_Information$Driver_Home_Area_Type == "Data missing or out of range" | is.na(Vehicle_Information$Driver_Home_Area_Type)] <- NA
@@ -214,19 +216,45 @@ dados_finais <- merge (Accident_Information, Vehicle_Information, by = "Accident
 
 ##apagar colunas não importantes##
 dados_finais <- dados_finais %>%
-  select(-'1st_Road_Class', -'2nd_Road_Class', -Carriageway_Hazards, -Did_Police_Officer_Attend_Scene_of_Accident, -`Local_Authority_(Highway)`, -Location_Northing_OSGR, -`Pedestrian_Crossing-Human_Control`, -Junction_Detail, -Road_Surface_Conditions, -Special_Conditions_at_Site, -Driver_Home_Area_Type, -Engine_Capacity_.CC., -Hit_Object_off_Carriageway,-make, -model, -Towing_and_Articulation, -Vehicle_Leaving_Carriageway, -Skidding_and_Overturning, -Vehicle_Reference, -X1st_Point_of_Impact, -Year.y, -Age_of_Vehicle)
+  select(-'1st_Road_Class', -'2nd_Road_Class', -Carriageway_Hazards, -Did_Police_Officer_Attend_Scene_of_Accident, -`Local_Authority_(Highway)`, -Location_Northing_OSGR, -`Pedestrian_Crossing-Human_Control`, -Junction_Detail, -Road_Surface_Conditions, -Special_Conditions_at_Site, -Driver_Home_Area_Type, -Engine_Capacity_.CC., -Hit_Object_off_Carriageway,-make, -model, -Towing_and_Articulation, -Vehicle_Leaving_Carriageway, -Skidding_and_Overturning, -Vehicle_Reference, -X1st_Point_of_Impact, -Year.y)
 
 ##ver quantos NA há em cada coluna e removemos a coluna Age_of_Vehicle ##
 quantidade_na_por_coluna <- colSums(is.na(dados_finais))
 print(quantidade_na_por_coluna)
+dados_finais <- subset (dados_finais, select = -Age_of_Vehicle)
 
 
 ################################################################################
 #######                           Remover NA                             #######
 ################################################################################
 
-dados_finais_sem_na <- na.omit(dados_finais)
-print(dados_finais_sem_na)
+dados_finais <- na.omit(dados_finais)
+
+################################################################################
+#######  Criar nova coluna com estações do ano a partir da coluna date   #######
+################################################################################
+dados_finais$Date <- as.Date(dados_finais$Date, format = "%d.%m.%Y")
+
+dados_finais <- dados_finais %>%
+  mutate(mes = lubridate::month(Date),
+         Seasons = case_when(
+           mes %in% 3:5 ~ "Primavera",
+           mes %in% 6:8 ~ "Verão",
+           mes %in% 9:11 ~ "Outono",
+           TRUE ~ "Inverno"
+         )) %>%
+  select(-mes) 
+
+
+##reordenar as colunas
+dados_finais <- dados_finais %>%
+  select(
+    Accident_Index, Age_Band_of_Driver, Sex_of_Driver, Day_of_Week, Seasons,
+    Year.x, Weather_Conditions, Light_Conditions, 
+    `Local_Authority_(District)`, Urban_or_Rural_Area, Road_Type,
+    Speed_limit, Vehicle_Type, Vehicle_Manoeuvre,
+    Number_of_Vehicles, Number_of_Casualties, Accident_Severity
+  )
 
 ################################################################################
 #######                          Entendimento dos dados                  #######
@@ -267,3 +295,45 @@ tab <- Vehicle_Information %>% select_if(is.numeric) %>%
   separate(stat, into = c("var", "stat"), sep = "&") %>%
   pivot_wider(names_from = stat, values_from = val)
 
+################################################################################
+#### detetar de outliers com critério do Intervalo Interquartil numericos   ####
+################################################################################
+
+## Identificar colunas numéricas e calcular quartis e IQR para cada coluna numérica
+colunas_numericas <- sapply(dados_finais, is.numeric)
+
+
+Q1 <- apply(dados_finais[, colunas_numericas], 2, quantile, probs = 0.25)
+print (Q1)
+
+Q3 <- apply(dados_finais[, colunas_numericas], 2, quantile, probs = 0.75)
+print (Q3)
+
+IQR <- Q3 - Q1
+print (IQR)
+
+# Identificar outliers em cada coluna numérica
+outliers <- dados_finais
+outliers[colunas_numericas] <- Map(function(x, q1, q3) {
+  x < (q1 - 1.5 * (q3 - q1)) | x > (q3 + 1.5 * (q3 - q1))
+}, dados_finais[colunas_numericas], Q1, Q3)
+
+print(outliers)
+
+################################################################################
+#### detetar de outliers com critério do Intervalo Interquartil categoricos ####
+################################################################################
+
+
+# Selecionar apenas as colunas categóricas do dataframe
+colunas_categoricas <- sapply(dados_finais, is.factor)
+
+# Criar um resumo da contagem de cada categoria em todas as colunas categóricas
+resumo_categorias <- dados_finais %>%
+  select_if(is.factor) %>%
+  gather(key = "variavel", value = "valor") %>%
+  count(variavel, valor) %>%
+  arrange(variavel, desc(n))
+
+# Exibir o resumo da contagem de categorias
+print(resumo_categorias)
