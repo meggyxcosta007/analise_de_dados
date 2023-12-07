@@ -42,29 +42,17 @@ Accident_Information <- subset (Accident_Information, select = -InScotland)
 #######            tratamento de NA em Vehicle_Information               #######
 ################################################################################
 
-##ver quantos NA em junction_location e decidimos eliminar
-Vehicle_Information$Junction_Location[Vehicle_Information$Junction_Location == "Data missing or out of range" | is.na(Vehicle_Information$Junction_Location)] <- NA
-contagem_NA_junction_location <- sum(is.na(Vehicle_Information$Junction_Location))
-print (contagem_NA_junction_location)
 
-## mudar "data missing" para NA Driver_Home_Area_Type
+## mudar "data missing" para NA Age_Band_of_Driver
 Vehicle_Information$Age_Band_of_Driver[Vehicle_Information$Age_Band_of_Driver == "Data missing or out of range" | is.na(Vehicle_Information$Age_Band_of_Driver)] <- NA
 
 ## mudar "data missing" para NA Driver_Home_Area_Type
 Vehicle_Information$Driver_Home_Area_Type[Vehicle_Information$Driver_Home_Area_Type == "Data missing or out of range" | is.na(Vehicle_Information$Driver_Home_Area_Type)] <- NA
 
-## mudar "data missing" para NA em Was_Vehicle_Left_Hand_Drive
-Vehicle_Information$Was_Vehicle_Left_Hand_Drive[Vehicle_Information$Was_Vehicle_Left_Hand_Drive == "Data missing or out of range" | is.na(Vehicle_Information$Was_Vehicle_Left_Hand_Drive)] <- NA
-
 ## mudar "not known" para NA Sex_of_Driver
 Vehicle_Information$Sex_of_Driver[Vehicle_Information$Sex_of_Driver == "Not known" | is.na(Vehicle_Information$Sex_of_Driver)] <- NA
 
-### quais as variáveis na coluna Hit_Object_in_Carriageway para ver se há NA não detetáveis
-valores_Hit_Object_in_Carriageway <- unique(Vehicle_Information$Hit_Object_in_Carriageway)
-print (valores_Hit_Object_in_Carriageway)
-Vehicle_Information$Hit_Object_in_Carriageway[Vehicle_Information$Hit_Object_in_Carriageway == "Data missing or out of range" | is.na(Vehicle_Information$Hit_Object_in_Carriageway)] <- NA
-
-### quais as variáveis na coluna make para ver se há NA não detetáveis
+## quais as variáveis na coluna make para ver se há NA não detetáveis
 valores_make <- unique(Vehicle_Information$make)
 print (valores_make)
 Vehicle_Information$make[Vehicle_Information$make == "Data missing or out of range" | is.na(Vehicle_Information$make)] <- NA
@@ -208,6 +196,7 @@ print(colunas_na)
 Accident_Information <- Accident_Information %>%
   select(-Engine_Capacity_.CC., -model)
 
+
 # Calcular o número de NA em cada coluna, filtrar as colunas com mais de 200000 NA, na tabela Accident_Information
 num_coluna_accident_information <- colSums(is.na(Accident_Information))
 colunas_na_accident_information <- names(num_coluna_accident_information[num_coluna_accident_information > 200000])
@@ -218,48 +207,30 @@ Accident_Information <- subset(Accident_Information, select = -Junction_Control)
 
 
 ################################################################################
-#######                        Imputação de Dados                        #######
+#######    juntar os dois dataframes com base na coluna em comum         #######
 ################################################################################
 
-install.packages("mice")
-library(mice)
-
-# Realizar a imputação usando o método de regressão
-dados_imputados <- mice(dados, method = 'rf')  # Método de imputação com Floresta Aleatória (Random Forest)
-
-# Obter os dados imputados completos
-dados_completos <- complete(dados_imputados)
-
-# Agora 'dados_completos' contém os valores ausentes previstos pelo modelo
-
-aproximação_NA_Vehicle_Information <- Vehicle_Information[, -which(names(dados) == "variavel_com_faltantes")]
+dados_finais <- merge (Accident_Information, Vehicle_Information, by = "Accident_Index")
 
 ################################################################################
-#######                          juntar as duas tabelas                  #######
+#######             Tirar colunas não importantes                        #######
 ################################################################################
+
+##apagar colunas não importantes##
+dados_finais <- dados_finais %>%
+  select(-'1st_Road_Class', -'2nd_Road_Class', -Carriageway_Hazards, -Did_Police_Officer_Attend_Scene_of_Accident, -`Local_Authority_(Highway)`, -Location_Northing_OSGR, -`Pedestrian_Crossing-Human_Control`, -Junction_Detail, -Road_Surface_Conditions, -Special_Conditions_at_Site, -Driver_Home_Area_Type, -Engine_Capacity_.CC., -Hit_Object_off_Carriageway,-make, -model, -Towing_and_Articulation, -Vehicle_Leaving_Carriageway, -Skidding_and_Overturning, -Vehicle_Reference, -X1st_Point_of_Impact, -Year.y, -Age_of_Vehicle)
+
+##ver quantos NA há em cada coluna e removemos a coluna Age_of_Vehicle ##
+quantidade_na_por_coluna <- colSums(is.na(dados_finais))
+print(quantidade_na_por_coluna)
 
 
 ################################################################################
-###  Ver colunas importantes e dessas escolher apenas 10 que têm menos NA    ###
+#######                           Remover NA                             #######
 ################################################################################
 
-# Exemplo de um dataframe
-seu_dataframe <- data.frame(
-  coluna1 = c(1, 2, NA, 4),
-  coluna2 = c(NA, NA, NA, NA),
-  coluna3 = c(NA, 2, NA, 4),
-  coluna4 = c(1, 2, 3, 4),
-  coluna5 = c(NA, NA, NA, NA)
-)
-
-# Calcular a quantidade de NA em cada coluna
-quantidade_na_por_coluna <- colSums(is.na(seu_dataframe))
-
-# Obter os nomes das 10 colunas com menos NA
-nomes_colunas_menos_na <- names(sort(quantidade_na_por_coluna, na.last = TRUE))[1:10]
-
-# Selecionar apenas as 10 colunas com menos NA
-seu_dataframe_10_colunas <- seu_dataframe[nomes_colunas_menos_na]
+dados_finais_sem_na <- na.omit(dados_finais)
+print(dados_finais_sem_na)
 
 ################################################################################
 #######                          Entendimento dos dados                  #######
@@ -299,6 +270,4 @@ tab <- Vehicle_Information %>% select_if(is.numeric) %>%
   pivot_longer(names_to = "stat", values_to = "val", cols = everything()) %>%
   separate(stat, into = c("var", "stat"), sep = "&") %>%
   pivot_wider(names_from = stat, values_from = val)
-  
-
 
