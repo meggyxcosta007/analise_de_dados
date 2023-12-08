@@ -8,6 +8,7 @@ library(DMwR2)
 library (rpart)
 library(dplyr)
 library(tidyr)
+library(ggplot2)
 
 ################################################################################
 #######                           carregar dados                         #######
@@ -26,7 +27,6 @@ ExpReport(Vehicle_Information, op_file = "eda_auto_report_Vehicle_Information.ht
 ################################################################################
 #######                      2.Pré-Processamento dos dados               #######
 ################################################################################
-library(dplyr)
 
 
 ##apagar colunas não importantes##
@@ -96,6 +96,7 @@ Accident_Information$Junction_Detail[Accident_Information$Junction_Detail == "Da
 
 ## mudar "unknown" para NA em Weather_Conditions
 Accident_Information$Weather_Conditions[Accident_Information$Weather_Conditions == "Unknown" | is.na(Accident_Information$Weather_Conditions)] <- NA
+Accident_Information$Weather_Conditions[Accident_Information$Weather_Conditions == "Data missing or out of range" | is.na(Accident_Information$Weather_Conditions)] <- NA
 
 ## mudar "unclassified" para NA em 1st_Road_Class
 Accident_Information$`1st_Road_Class`[Accident_Information$`1st_Road_Class` == "Unclassified" | is.na(Accident_Information$`1st_Road_Class`)] <- NA
@@ -260,9 +261,6 @@ dados_finais <- dados_finais %>%
 #######                          Entendimento dos dados                  #######
 ################################################################################
 
-library(dplyr)
-library(tidyr)
-
 ################################################################################
 #######                          sumarizar as tabelas                    #######
 ################################################################################
@@ -320,20 +318,69 @@ outliers[colunas_numericas] <- Map(function(x, q1, q3) {
 
 print(outliers)
 
+# Criar um boxplot para identificar outliers
+ggplot(data = dados_finais, aes(x = 1, y = Number_of_Vehicles)) +
+  geom_boxplot() +
+  ggtitle('Boxplot da Variável Desejada')
+
 ################################################################################
-#### detetar de outliers com critério do Intervalo Interquartil categoricos ####
+####                                Gráficos                                ####
 ################################################################################
 
 
-# Selecionar apenas as colunas categóricas do dataframe
-colunas_categoricas <- sapply(dados_finais, is.factor)
+#######################      Gráfico de dispersão    ###########################
+ggplot(dados_finais, aes(x = Age_Band_of_Driver, y = Number_of_Casualties, color = Weather_Conditions)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(
+    x = "Faixa Etária do Motorista",
+    y = "Número de Vítimas",
+    title = "Relação entre Idade do Motorista e Número de Vítimas",
+    color = "Condições Meteorológicas"
+  ) +
+  theme_minimal()
 
-# Criar um resumo da contagem de cada categoria em todas as colunas categóricas
-resumo_categorias <- dados_finais %>%
-  select_if(is.factor) %>%
-  gather(key = "variavel", value = "valor") %>%
-  count(variavel, valor) %>%
-  arrange(variavel, desc(n))
+#######################      Gráfico de barras      ###########################
+ggplot(dados_finais, aes(x = Day_of_Week, fill = Accident_Severity)) +
+  geom_bar(position = "stack", stat = "count") +
+  labs(
+    x = "Dia da Semana",
+    y = "Contagem de Acidentes",
+    title = "Contagem de Acidentes por Dia da Semana",
+    fill = "Gravidade do Acidente"
+  ) +
+  theme_minimal()
 
-# Exibir o resumo da contagem de categorias
-print(resumo_categorias)
+#######################      Gráfico de linha        ###########################
+ggplot(dados_finais, aes(x = Year.x, y = Number_of_Casualties, color = Accident_Severity)) +
+  geom_line() +
+  labs(
+    x = "Ano",
+    y = "Número de Vítimas",
+    title = "Número de Vítimas ao Longo do Tempo",
+    color = "Gravidade do Acidente"
+  ) +
+  theme_minimal()
+
+###############   Gráfico de barras para Light_Conditions   ####################
+ggplot(dados_finais, aes(x = Light_Conditions, fill = Light_Conditions)) +
+  geom_bar() +
+  scale_fill_manual(values = rainbow(length(unique(dados_finais$Light_Conditions)))) +  
+  labs(x = "Light Conditions", y = "Count", title = "Count Plot with Gradient Colors") +
+  theme_minimal()
+
+###############   Gráfico de barras para Weather_Conditions   ##################
+ggplot(dados_finais, aes(x = Weather_Conditions)) +
+  geom_bar() +
+  labs(x = "Weather Conditions", y = "Count", title = "Count Plot") +
+  theme_minimal()
+
+
+# Crie um gráfico de barras com cores pasteis para Weather_Conditions 
+palette <- scales::viridis_pal(option = "plasma", direction = -1)(length(unique(dados_finais$Weather_Conditions)))
+
+ggplot(dados_finais, aes(x = Weather_Conditions, fill = Weather_Conditions)) +
+  geom_bar() +
+  scale_fill_manual(values = palette) +
+  labs(x = "Weather Conditions", y = "Count", title = "Count Plot with Pastel Colors") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
